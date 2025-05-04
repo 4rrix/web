@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Duel X-O | 2 Player</title>
+    <style>
+        /* Base Styles */
+        :root {
+            --x-color: #ff4757;
+            --o-color: #2ed573;
+            --bg-color: #2f3542;
+            --accent-color: #57606f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-color);
+            font-family: 'Verdana', sans-serif;
+        }
+
+        /* Game Container */
+        .game-container {
+            position: relative;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--accent-color);
+        }
+
+        /* Game Title */
+        .title {
+            text-align: center;
+            color: #fff;
+            margin-bottom: 1.5rem;
+            font-size: 2.5em;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Game Board */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 2rem;
+        }
+
+        /* Cells */
+        .cell {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cell:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
+        }
+
+        /* Player Symbols */
+        .cell.x::before {
+            content: "X";
+            color: var(--x-color);
+            font-size: 4.5em;
+            font-weight: bold;
+            text-shadow: 0 0 20px var(--x-color);
+            animation: x-appear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .cell.o::before {
+            content: "O";
+            color: var(--o-color);
+            font-size: 4.5em;
+            font-weight: bold;
+            text-shadow: 0 0 20px var(--o-color);
+            animation: o-appear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Status */
+        .status {
+            text-align: center;
+            color: #fff;
+            font-size: 1.5em;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: status-glow 2s infinite;
+        }
+
+        /* Reset Button */
+        .reset-btn {
+            background: none;
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 1rem 2rem;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            letter-spacing: 2px;
+        }
+
+        /* Animations */
+        @keyframes x-appear {
+            0% { transform: scale(0) rotate(180deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+
+        @keyframes o-appear {
+            0% { 
+                transform: scale(0);
+                opacity: 0;
+            }
+            100% { 
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes status-glow {
+            100% { left: 100%; }
+        }
+
+        .winning-cell {
+            animation: win-glow 1s infinite alternate;
+        }
+
+        @keyframes win-glow {
+            0% { filter: brightness(1); }
+            100% { filter: brightness(1.2); }
+        }
+
+        /* Particle Effect */
+        .cell::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 50%, rgba(255,255,255,0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .cell:hover::after {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="title">XOX DUEL</h1>
+        <div class="status" id="status">Giliran Pemain X</div>
+        <div class="board" id="board">
+            <div class="cell" data-cell></div>
+            <div class="cell" data-cell></div>
+            <div class="cell" data-cell></div>
+            <div class="cell" data-cell></div>
+            <div class="cell" data-cell></div>
+            <div class="cell" data-cell></div>
+            <div class="cell" data-cell></div>
+            <div class="cell" data-cell></div>
+            <div class="cell" data-cell></div>
+        </div>
+        <button class="reset-btn" id="resetBtn">Ulangi Permainan</button>
+    </div>
+
+    <script>
+        const cells = document.querySelectorAll('[data-cell]');
+        const status = document.getElementById('status');
+        const resetBtn = document.getElementById('resetBtn');
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let gameState = ['', '', '', '', '', '', '', '', ''];
+
+        const winningCombinations = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        // Game Logic
+        const handleClick = (e) => {
+            const cell = e.target;
+            const cellIndex = Array.from(cells).indexOf(cell);
+
+            if (gameState[cellIndex] !== '' || !gameActive) return;
+
+            gameState[cellIndex] = currentPlayer;
+            cell.classList.add(currentPlayer.toLowerCase());
+
+            if (checkWin()) {
+                status.textContent = `Player ${currentPlayer} Menang! 🏆`;
+                status.style.color = currentPlayer === 'X' ? 'var(--x-color)' : 'var(--o-color)';
+                highlightWinningCells();
+                gameActive = false;
+                return;
+            }
+
+            if (checkDraw()) {
+                status.textContent = 'Permainan Seri! 🤝';
+                gameActive = false;
+                return;
+            }
+
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateStatus();
+        };
+
+        const checkWin = () => {
+            return winningCombinations.some(combination => {
+                return combination.every(index => {
+                    return gameState[index] === currentPlayer;
+                });
+            });
+        };
+
+        const checkDraw = () => {
+            return gameState.every(cell => cell !== '');
+        };
+
+        const highlightWinningCells = () => {
+            winningCombinations.forEach(combination => {
+                if (combination.every(index => gameState[index] === currentPlayer)) {
+                    combination.forEach(index => {
+                        cells[index].classList.add('winning-cell');
+                    });
+                }
+            });
+        };
+
+        const updateStatus = () => {
+            status.textContent = `Giliran Pemain ${currentPlayer}`;
+            status.style.color = currentPlayer === 'X' ? 'var(--x-color)' : 'var(--o-color)';
+        };
+
+        const resetGame = () => {
+            gameState = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            currentPlayer = 'X';
+            updateStatus();
+            
+            cells.forEach(cell => {
+                cell.classList.remove('x', 'o', 'winning-cell');
+            });
+        };
+
+        // Event Listeners
+        cells.forEach(cell => cell.addEventListener('click', handleClick));
+        resetBtn.addEventListener('click', resetGame);
+    </script>
+</body>
+</html>
